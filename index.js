@@ -2,19 +2,14 @@ const express = require('express');
 const app = express();
 const port = 3000;
 
+const config = require('./config.json');
 
 const cors = require('cors');
 
 app.use(cors())
 
 var mysql = require('mysql');
-var pool  = mysql.createPool({
-  connectionLimit : 10,
-  host            : 'source.dog',
-  user            : 'slydog_tests',
-  password        : 'slydog_tests',
-  database        : 'slydog_tests'
-});
+var pool  = mysql.createPool(config);
 
 pool.query('SHOW DATABASES', function (error, results, fields) {
   if (error) throw error;
@@ -40,7 +35,26 @@ app.get('/test/:slug', (req, res) => {
 
       test.questions = results;
 
-      res.json(test);
+      let range = [];
+
+      for (var i = 0; i < test.questions.length; i++) {
+        test.questions[i].options = [];
+        range.push(test.questions[i].question_id);
+      }
+
+      pool.query(`SELECT * FROM tbl_options WHERE parent_question IN (${range})`, function (error, results, fields) {
+        if (error) return console.log(error);
+
+        for (var i = 0; i < results.length; i++) {
+          for (var j = 0; j < test.questions.length; j++) {
+            if (test.questions[j].question_id == results[i].parent_question) {
+              test.questions[j].options.push(results[i]);
+            }
+          }
+        }
+
+        return res.json(test);
+      });
     });
   });
 });
