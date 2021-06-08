@@ -112,8 +112,20 @@ app.post('/auth', jsonParser, (req, res) => {
   else return res.json({ success: 0, error: "Blank data" });
 });
 
-app.post('/', (req, res) => {
-  return res.json('Received a POST HTTP method');
+app.post('/adduser', jsonParser, (req, res) => {
+  if (req.body.username && req.body.password) {
+    bcrypt.hash(req.body.password, saltRounds, function(err, result) {
+      if (result) {
+        pool.query(`INSERT INTO tbl_users (username, password) VALUES ('${req.body.username}', '${result}')`, function (error, results, fields) {
+          if (error) return res.json({ success: 0, error: error });
+
+          return res.json({ success: 1 });
+        });
+      }
+      else return res.json({ success: 0, error: "Error hashing pass" });
+    });
+  }
+  else return res.json({ success: 0, error: "Blank data" });
 });
  
 app.post('/', (req, res) => {
