@@ -20,11 +20,6 @@ let users = {};
 var mysql = require('mysql');
 var pool  = mysql.createPool(config);
 
-pool.query('SHOW DATABASES', function (error, results, fields) {
-  if (error) throw error;
-  console.log('res: ', results);
-});
-
 app.listen(port, () => {
   console.log(`Example app listening at http://localhost:${port}`)
 });
@@ -126,6 +121,41 @@ app.post('/adduser', jsonParser, (req, res) => {
     });
   }
   else return res.json({ success: 0, error: "Blank data" });
+});
+ 
+app.post('/answer', jsonParser, (req, res) => {
+  //console.log("submitted answers", req.body)
+
+  let studID;
+
+  Object.entries(users).forEach(([key, value]) => {
+    if (value.token == req.body.student) studID = value.id;
+  });
+
+  let query = `INSERT INTO tbl_answers
+      ( student_id, test_id, question_id, option_id )
+    VALUES`;
+
+    `
+      ('John', 123, 'Lloyds Office'), 
+      ('Jane', 124, 'Lloyds Office'), 
+      ('Billy', 125, 'London Office'),
+      ('Miranda', 126, 'Bristol Office');`;
+
+  let queryItems = [];
+
+  for (let answer in req.body.answers) {
+    for (var i = 0; i < req.body.answers[answer].length; i++) 
+      queryItems.push(`(${studID || 'NULL'}, ${req.body.test_id}, ${answer}, ${req.body.answers[answer][i]})`);
+  }
+
+  query += queryItems.join(", ");
+
+  pool.query(query, function (error, results, fields) {
+    if (error) return res.json({ success: 0, error: error });
+
+    return res.json({ success: 1 });
+  });
 });
  
 app.post('/', (req, res) => {
