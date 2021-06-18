@@ -122,6 +122,83 @@ app.post('/adduser', jsonParser, (req, res) => {
   }
   else return res.json({ success: 0, error: "Blank data" });
 });
+
+app.post('/addtest', jsonParser, (req, res) => {
+  if (req.body.title && req.body.questions.length > 0) {
+    let slug = req.body.title.toLowerCase().trim().replaceAll(" ", "_");
+
+    pool.query(`INSERT INTO tbl_tests (test_name, test_slug) VALUES ('${req.body.title}', '${slug}')`, function (error, results, fields) {
+      if (error) return res.json({ success: 0, error: error });
+
+      let createdTestID = results.insertId;
+
+      if (createdTestID) {
+        let groupedOptions = [];
+
+        let query = `INSERT INTO tbl_questions
+            ( question_name, parent_test )
+          VALUES`;
+
+        let queryArr = [];
+
+        for (var i = 0; i < req.body.questions.length; i++) {
+          queryArr.push(`('${req.body.questions[i].title}', ${createdTestID})`);
+
+          groupedOptions.push(req.body.questions[i].options);
+        }
+
+        query += queryArr.join(', ');
+
+        pool.query(query, function (error, results, fields) {
+          if (error) {
+            console.log(error);
+            return res.json({ success: 0, error: error });
+          }
+
+          pool.query(`SELECT question_id FROM tbl_questions WHERE parent_test = '${createdTestID}'`, function (error, results, fields) {
+            if (error) {
+              console.log(error);
+            }
+
+            query = `INSERT INTO tbl_options
+                ( name, parent_question )
+              VALUES`;
+
+            queryArr = [];
+
+            for (var i = 0; i < results.length; i++) {
+
+              for (var j = 0; j < groupedOptions[i].length; j++) {
+
+                queryArr.push(`('${groupedOptions[i][j].title}', ${results[i].question_id})`);
+
+              }
+            }
+
+            query += queryArr.join(', ');
+
+            pool.query(query, function (error, results, fields) {
+              if (error) {
+                console.log(error);
+                return res.json({ success: 0, error: error });
+              }
+
+              return res.json({ success: 1 });
+            });
+
+          });
+
+        });
+      }
+      else {
+        //error
+      }
+
+      //return res.json({ success: 1 });
+    });
+  }
+  else return res.json({ success: 0, error: "Blank data" });
+});
  
 app.post('/answer', jsonParser, (req, res) => {
   //console.log("submitted answers", req.body)
